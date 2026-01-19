@@ -104,30 +104,49 @@
 
             // 7. 최적화된 드래그 이벤트 (Swiper 잠금 포함)
             el.onmousedown = (e) => {
+                // 1. 예외 처리
                 if (!isDecorating || e.target.closest('.sticker-control-panel') || e.target.classList.contains('btn-single-remove')) return;
-                e.preventDefault(); e.stopPropagation();
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                // 2. 선택 상태 업데이트 (선택된 적이 없을 때만 전체 렌더링)
+                if (selectedSticker !== s) {
+                    selectedSticker = s;
+                    renderStickers();
+                    return; // 렌더링 후 다음 클릭부터 드래그가 시작되도록 하거나, 아래 로직을 계속 실행
+                }
 
                 const swiperEl = document.querySelector('.postImagesSwiper');
                 const swiperInstance = swiperEl ? swiperEl.swiper : null;
                 if (swiperInstance) swiperInstance.allowTouchMove = false;
 
-                selectedSticker = s;
-                renderStickers();
-
                 const rect = targetLayer.getBoundingClientRect();
+
+                // [핵심 변화] mousemove 시 renderStickers()를 호출하지 않고 style만 변경
                 const onMouseMove = (mE) => {
+                    // 위치 계산
                     let newX = ((mE.clientX - rect.left) / rect.width) * 100;
                     let newY = ((mE.clientY - rect.top) / rect.height) * 100;
+
+                    // 범위 제한 (0~100%)
                     s.x = Math.max(0, Math.min(100, newX));
                     s.y = Math.max(0, Math.min(100, newY));
+
+                    // ✅ DOM을 다시 그리는 대신 스타일만 즉시 업데이트 (매우 부드러워짐)
                     el.style.left = s.x + '%';
                     el.style.top = s.y + '%';
                 };
+
                 const onMouseUp = () => {
                     if (swiperInstance) swiperInstance.allowTouchMove = true;
                     document.removeEventListener('mousemove', onMouseMove);
                     document.removeEventListener('mouseup', onMouseUp);
+
+                    // 드래그가 끝난 시점에 최종 좌표를 데이터에 확정 (필요 시)
+                    console.log("드래그 종료:", s.x, s.y);
                 };
+
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
             };
