@@ -1112,6 +1112,35 @@ html {
     justify-content: center;
 }
 
+/* 스티커 아이템 호버 효과 */
+.sticker-item:hover {
+    filter: brightness(1.1);
+    transition: filter 0.2s ease;
+}
+
+/* 커스텀 툴팁을 만들고 싶다면 아래 속성을 참고하세요 */
+.sticker-item::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(139, 115, 85, 0.9); /* 따뜻한 갈색톤 */
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 10015;
+}
+
+.sticker-item:hover::after {
+    opacity: 1;
+}
+
 /* 삭제 버튼이 선택되지 않았을 때는 확실히 숨김 */
 .sticker-item .btn-single-remove.hidden,
 .sticker-item .sticker-control-panel.hidden {

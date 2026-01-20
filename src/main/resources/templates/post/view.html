@@ -63,47 +63,47 @@
 
             <!-- ✅ 게시글 이미지 (첫 이미지부터 넘기는 Swiper 1개로) -->
             <!-- ✅ 게시글 이미지 (기존 코드)-->
-<!--            <div th:if="${post.imageItems != null and !post.imageItems.isEmpty()}" class="post-images">-->
+            <!--            <div th:if="${post.imageItems != null and !post.imageItems.isEmpty()}" class="post-images">-->
 
-<!--                <div class="swiper postImagesSwiper">-->
-<!--                    <div class="swiper-wrapper">-->
+            <!--                <div class="swiper postImagesSwiper">-->
+            <!--                    <div class="swiper-wrapper">-->
 
-<!--                        <th:block th:each="image, iter : ${post.imageItems}">-->
+            <!--                        <th:block th:each="image, iter : ${post.imageItems}">-->
 
-<!--                            &lt;!&ndash; ✅ 1번째: 꾸미기 캔버스 &ndash;&gt;-->
-<!--                            <div class="swiper-slide" th:if="${iter.first}">-->
-<!--                                <div id="sticker-canvas"-->
-<!--                                     class="sticker-canvas relative rounded-2xl overflow-hidden bg-[#F9F6F1]"-->
-<!--                                     th:data-image-id="${image.id}">-->
+            <!--                            &lt;!&ndash; ✅ 1번째: 꾸미기 캔버스 &ndash;&gt;-->
+            <!--                            <div class="swiper-slide" th:if="${iter.first}">-->
+            <!--                                <div id="sticker-canvas"-->
+            <!--                                     class="sticker-canvas relative rounded-2xl overflow-hidden bg-[#F9F6F1]"-->
+            <!--                                     th:data-image-id="${image.id}">-->
 
-<!--                                    <img th:src="@{${image.url}}"-->
-<!--                                         th:alt="${post.title}"-->
-<!--                                         class="post-image select-none w-full h-full block">-->
+            <!--                                    <img th:src="@{${image.url}}"-->
+            <!--                                         th:alt="${post.title}"-->
+            <!--                                         class="post-image select-none w-full h-full block">-->
 
-<!--                                    <div id="sticker-layer"-->
-<!--                                         class="absolute inset-0 pointer-events-none overflow-hidden"></div>-->
-<!--                                </div>-->
-<!--                            </div>-->
+            <!--                                    <div id="sticker-layer"-->
+            <!--                                         class="absolute inset-0 pointer-events-none overflow-hidden"></div>-->
+            <!--                                </div>-->
+            <!--                            </div>-->
 
-<!--                            &lt;!&ndash; ✅ 2번째~ 일반 이미지 &ndash;&gt;-->
-<!--                            <div class="swiper-slide" th:unless="${iter.first}">-->
-<!--                                <img th:src="@{${image.url}}"-->
-<!--                                     th:alt="${post.title}"-->
-<!--                                     class="post-image w-full h-full block"-->
-<!--                                     th:data-image-id="${image.id}">-->
-<!--                            </div>-->
+            <!--                            &lt;!&ndash; ✅ 2번째~ 일반 이미지 &ndash;&gt;-->
+            <!--                            <div class="swiper-slide" th:unless="${iter.first}">-->
+            <!--                                <img th:src="@{${image.url}}"-->
+            <!--                                     th:alt="${post.title}"-->
+            <!--                                     class="post-image w-full h-full block"-->
+            <!--                                     th:data-image-id="${image.id}">-->
+            <!--                            </div>-->
 
-<!--                        </th:block>-->
+            <!--                        </th:block>-->
 
 
-<!--                    </div>-->
+            <!--                    </div>-->
 
-<!--                    <div class="swiper-pagination"></div>-->
-<!--                    <div class="swiper-button-prev"></div>-->
-<!--                    <div class="swiper-button-next"></div>-->
-<!--                </div>-->
+            <!--                    <div class="swiper-pagination"></div>-->
+            <!--                    <div class="swiper-button-prev"></div>-->
+            <!--                    <div class="swiper-button-next"></div>-->
+            <!--                </div>-->
 
-<!--            </div>-->
+            <!--            </div>-->
 
             <div th:if="${post.imageItems != null and !post.imageItems.isEmpty()}" class="post-images">
                 <div class="swiper postImagesSwiper">
@@ -141,36 +141,36 @@
             <div class="comments-sticky-wrapper">
 
                 <!-- ===== 꾸미기 패널 (기존 유지) ===== -->
-<!--                <div class="decoration-panel mb-8 p-6 bg-[#F9F6F1] rounded-2xl">-->
-<!--                    <div class="flex items-center gap-2 mb-4">-->
-<!--                        <span class="text-xl">✨</span>-->
-<!--                        <h3 class="text-[#8B7355] font-serif text-lg font-bold">꾸미기</h3>-->
-<!--                    </div>-->
+                <!--                <div class="decoration-panel mb-8 p-6 bg-[#F9F6F1] rounded-2xl">-->
+                <!--                    <div class="flex items-center gap-2 mb-4">-->
+                <!--                        <span class="text-xl">✨</span>-->
+                <!--                        <h3 class="text-[#8B7355] font-serif text-lg font-bold">꾸미기</h3>-->
+                <!--                    </div>-->
 
-<!--                    <div id="deco-start-view">-->
-<!--                        <button onclick="startDecoration()"-->
-<!--                                class="w-full py-3 bg-[#D4C4B0] text-white rounded-xl hover:bg-[#C9B5A0] transition-all font-medium cursor-pointer">-->
-<!--                            꾸미기 시작-->
-<!--                        </button>-->
-<!--                    </div>-->
+                <!--                    <div id="deco-start-view">-->
+                <!--                        <button onclick="startDecoration()"-->
+                <!--                                class="w-full py-3 bg-[#D4C4B0] text-white rounded-xl hover:bg-[#C9B5A0] transition-all font-medium cursor-pointer">-->
+                <!--                            꾸미기 시작-->
+                <!--                        </button>-->
+                <!--                    </div>-->
 
-<!--                    <div id="deco-active-view" class="hidden space-y-4">-->
-<!--                        <p class="text-xs text-[#8B7355]">스티커를 드래그하여 이미지에 놓아보세요!</p>-->
+                <!--                    <div id="deco-active-view" class="hidden space-y-4">-->
+                <!--                        <p class="text-xs text-[#8B7355]">스티커를 드래그하여 이미지에 놓아보세요!</p>-->
 
-<!--                        <div class="grid grid-cols-5 gap-2 bg-white p-3 rounded-xl" id="sticker-palette"></div>-->
+                <!--                        <div class="grid grid-cols-5 gap-2 bg-white p-3 rounded-xl" id="sticker-palette"></div>-->
 
-<!--                        <div class="flex gap-2">-->
-<!--                            <button onclick="saveDecoration()"-->
-<!--                                    class="flex-1 py-2 bg-[#8B7355] text-white rounded-lg hover:bg-[#A89080] text-sm cursor-pointer">-->
-<!--                                저장-->
-<!--                            </button>-->
-<!--                            <button onclick="cancelDecoration()"-->
-<!--                                    class="flex-1 py-2 bg-[#E8D5C4] text-[#8B7355] rounded-lg hover:bg-[#D4C4B0] text-sm cursor-pointer">-->
-<!--                                취소-->
-<!--                            </button>-->
-<!--                        </div>-->
-<!--                    </div>-->
-<!--                </div>-->
+                <!--                        <div class="flex gap-2">-->
+                <!--                            <button onclick="saveDecoration()"-->
+                <!--                                    class="flex-1 py-2 bg-[#8B7355] text-white rounded-lg hover:bg-[#A89080] text-sm cursor-pointer">-->
+                <!--                                저장-->
+                <!--                            </button>-->
+                <!--                            <button onclick="cancelDecoration()"-->
+                <!--                                    class="flex-1 py-2 bg-[#E8D5C4] text-[#8B7355] rounded-lg hover:bg-[#D4C4B0] text-sm cursor-pointer">-->
+                <!--                                취소-->
+                <!--                            </button>-->
+                <!--                        </div>-->
+                <!--                    </div>-->
+                <!--                </div>-->
 
                 <!-- ===== 스티커 붙이기 패널 ===== -->
                 <div class="decoration-panel mb-8 p-6 bg-[#F9F6F1] rounded-2xl">
@@ -199,16 +199,16 @@
                             </div>
                         </div>
 
-<!--                        <div class="flex gap-2 pt-2">-->
-<!--                            <button onclick="saveDecoration()"-->
-<!--                                    class="flex-1 py-3 bg-[#8B7355] text-white rounded-xl hover:bg-[#766248] text-sm font-bold shadow-sm transition-all active:scale-95">-->
-<!--                                ✨ 저장하기-->
-<!--                            </button>-->
-<!--                            <button onclick="cancelDecoration()"-->
-<!--                                    class="flex-1 py-3 bg-[#E8D5C4] text-[#8B7355] rounded-lg hover:bg-[#D4C4B0] text-sm font-bold transition-all">-->
-<!--                                취소-->
-<!--                            </button>-->
-<!--                        </div>-->
+                        <!--                        <div class="flex gap-2 pt-2">-->
+                        <!--                            <button onclick="saveDecoration()"-->
+                        <!--                                    class="flex-1 py-3 bg-[#8B7355] text-white rounded-xl hover:bg-[#766248] text-sm font-bold shadow-sm transition-all active:scale-95">-->
+                        <!--                                ✨ 저장하기-->
+                        <!--                            </button>-->
+                        <!--                            <button onclick="cancelDecoration()"-->
+                        <!--                                    class="flex-1 py-3 bg-[#E8D5C4] text-[#8B7355] rounded-lg hover:bg-[#D4C4B0] text-sm font-bold transition-all">-->
+                        <!--                                취소-->
+                        <!--                            </button>-->
+                        <!--                        </div>-->
                         <div class="flex flex-col gap-2 pt-2">
                             <button onclick="clearAllStickers()"
                                     class="w-full py-2 bg-red-50 text-red-500 rounded-lg text-xs font-bold hover:bg-red-100 transition-all border border-red-100">
@@ -378,16 +378,13 @@
 <script th:src="@{/js/post.js}"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script th:inline="javascript">
-    /*<![CDATA[*/
-    // sticker.js에서 window.ST_DATA.currentUserId를 참조하므로 형식을 맞춥니다.
     window.ST_DATA = {
         postId: [[${post.id}]],
-        currentUserId: 1 // 혹은 실제 로그인 사용자 ID
+        currentUserId: [[${session.loginUser.loginId}]],
+        currentUserNickname: [[${session.loginUser.nickname}]],
+        rawUserId: [[${session.loginUser.userId}]],
+        postOwnerId: [[${post.author.loginId}]]
     };
-
-    window.postId = [[${post.id}]];
-    window.currentUserId = 1;
-    /*]]>*/
 </script>
 <script th:src="@{/js/sticker.js}"></script>
 

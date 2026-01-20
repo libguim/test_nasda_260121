@@ -2,9 +2,12 @@ package com.example.nasda.controller.sticker;
 
 import com.example.nasda.dto.sticker.PostDecorationRequestDTO;
 import com.example.nasda.dto.sticker.PostDecorationResponseDTO;
+import com.example.nasda.repository.sticker.PostDecorationRepository;
+import com.example.nasda.service.AuthUserService;
 import com.example.nasda.service.sticker.PostDecorationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,81 +17,66 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/decorations")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class PostDecorationController {
 
     private final PostDecorationService postDecorationService;
+    private final AuthUserService authUserService; // 반드시 필드 선언!
+    private final PostDecorationRepository postDecorationRepository;
 
-    /**
-     * 1. 스티커 일괄 저장
-     */
     @PostMapping("")
     public ResponseEntity<List<PostDecorationResponseDTO>> saveDecorations(@RequestBody PostDecorationRequestDTO requestDTO) {
-        log.info("✨ [꾸미기 저장] 게시글 이미지(ID={}) 위에 {}개의 스티커 부착 요청",
-                requestDTO.getPostImageId(),
-                requestDTO.getDecorations() != null ? requestDTO.getDecorations().size() : 0);
+        // 클라이언트가 보낸 userId 대신, 서버 세션에 저장된 안전한 ID를 꺼냅니다.
+        Integer currentUserId = authUserService.getCurrentUserIdOrNull();
 
-        List<PostDecorationResponseDTO> savedDecorations = postDecorationService.saveDecorations(requestDTO);
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        log.info("✅ [저장 완료] 총 {}개의 장식 저장됨", savedDecorations.size());
-        return ResponseEntity.ok(savedDecorations);
+        // DTO의 userId를 실제 로그인한 사용자 ID로 강제 교체 (보안 위조 방지)
+        // (DTO에 @Setter가 없다면 새로운 빌더로 교체하거나 필드를 직접 수정)
+         requestDTO.setUserId(currentUserId);
+
+        return ResponseEntity.ok(postDecorationService.saveDecorations(requestDTO));
     }
 
-    /**
-     * 2. 꾸미기 조회 (이미지별)
-     */
-    @GetMapping("/image/{imageId}")
-    public List<PostDecorationResponseDTO> getDecorations(@PathVariable Integer imageId) {
-        log.debug("🔍 [꾸미기 조회] 이미지 ID={} 에 부착된 스티커 목록 조회", imageId);
-
-        List<PostDecorationResponseDTO> decorations = postDecorationService.getDecorationsByImageId(imageId);
-
-        return decorations;
-    }
-
-    /**
-     * 3. 스티커 위치/속성 수정 (Update)
-     * 사용자가 드래그 앤 드롭으로 스티커를 옮기거나 크기를 변경했을 때 호출합니다.
-     */
     @PutMapping("/{decorationId}")
-    public ResponseEntity<String> updateDecoration(
-            @PathVariable Integer decorationId,
-            @RequestBody PostDecorationRequestDTO.DecorationItem updateDTO, // 수정할 좌표/스케일 정보
-            @RequestParam Integer currentUserId // 수정 권한 확인을 위한 유저 ID
-    ) {
-        log.info("🔄 [꾸미기 수정] 장식 ID={} 수정 요청 (요청자: {})", decorationId, currentUserId);
+    public ResponseEntity<?> update(@PathVariable Integer decorationId, @RequestBody PostDecorationRequestDTO.DecorationItem updateDTO) {
+        Integer currentUserId = authUserService.getCurrentUserIdOrNull();
+        if (currentUserId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
         postDecorationService.updateDecoration(decorationId, updateDTO, currentUserId);
-
-        return ResponseEntity.ok("성공적으로 수정되었습니다.");
+        return ResponseEntity.ok("수정 완료");
     }
 
-    /**
-     * 4. 스티커 떼기 (삭제 권한 체크 포함)
-     * [변경점] 삭제를 요청하는 사용자의 ID를 함께 전달받아야 합니다.
-     */
     @DeleteMapping("/{decorationId}")
-    public ResponseEntity<String> deleteDecoration(
-            @PathVariable Integer decorationId,
-            @RequestParam Integer currentUserId // ✅ 클라이언트로부터 현재 로그인한 유저 ID를 받음
-    ) {
-        log.info("🗑️ [꾸미기 삭제] 장식 ID={} 삭제 요청 (요청자: {})", decorationId, currentUserId);
+    public ResponseEntity<String> deleteIndividualSticker(
+            @PathVariable("decorationId") Integer decorationId) {
 
-        // 변경된 서비스 인터페이스에 따라 두 개의 인자를 전달합니다.
+        // 현재 로그인한 사용자의 ID를 가져옵니다 (권한 체크용)
+        Integer currentUserId = authUserService.getCurrentUserIdOrNull();
+
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+        }
+
+        // 서비스 계층의 개별 삭제 로직 호출 (이전에 만든 deleteDecoration 메서드)
         postDecorationService.deleteDecoration(decorationId, currentUserId);
 
+        return ResponseEntity.ok("스티커가 삭제되었습니다. ✨");
+    }
+
+    // '내 스티커 모두 지우기' 기능에서 사용
+    @DeleteMapping("/user/{userId}/image/{imageId}")
+    public ResponseEntity<String> deleteUserStickers(
+            @PathVariable("userId") Integer userId,
+            @PathVariable("imageId") Integer imageId) {
+        postDecorationRepository.deleteByUserAndImageBulk(userId, imageId);
         return ResponseEntity.ok("성공적으로 삭제되었습니다.");
     }
 
-    /**
-     * 5. 게시글 전체 꾸미기 조회 (Post ID 기준)
-     * 페이지 로드시 해당 게시글의 모든 이미지에 붙은 스티커를 한꺼번에 가져옵니다.
-     */
     @GetMapping("/post/{postId}")
-    public List<PostDecorationResponseDTO> getDecorationsByPostId(@PathVariable Integer postId) {
-        log.debug("🔍 [게시글 전체 조회] 게시글 ID={} 에 부착된 모든 스티커 조회", postId);
-        // 서비스에도 이 메서드를 구현해야 합니다.
-        return postDecorationService.getDecorationsByPostId(postId);
+    public ResponseEntity<List<PostDecorationResponseDTO>> getByPostId(@PathVariable Integer postId) {
+        return ResponseEntity.ok(postDecorationService.getDecorationsByPostId(postId));
     }
 
 }

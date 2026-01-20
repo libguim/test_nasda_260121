@@ -157,7 +157,7 @@ public class PostService {
                             post.getTitle(),
                             post.getDescription(), // PostViewDto.content 에 description 매핑
                             post.getCategory().getCategoryName(),
-                            new PostViewDto.AuthorDto(post.getUser().getNickname()),
+                            new PostViewDto.AuthorDto(post.getUser().getNickname(), post.getUser().getUserId(), post.getUser().getLoginId()),
                             images,
                             imageItems,
                             post.getCreatedAt(),

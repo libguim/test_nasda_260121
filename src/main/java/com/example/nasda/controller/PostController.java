@@ -74,7 +74,7 @@ public class PostController {
                     entity.getTitle(),
                     entity.getDescription(), // content로 사용
                     entity.getCategory().getCategoryName(),
-                    new PostViewDto.AuthorDto(entity.getUser().getNickname()),
+                    new PostViewDto.AuthorDto(entity.getUser().getNickname(), entity.getUser().getUserId(), entity.getUser().getLoginId()),
                     imageUrls,
                     imageItems,
                     entity.getCreatedAt(),

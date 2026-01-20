@@ -13,8 +13,7 @@ public interface PostDecorationService {
     // [Read] 목록 조회
     List<PostDecorationResponseDTO> getDecorationsByImageId(Integer imageId);
 
-    // ✅ [Update] 장식 수정 (위치, 크기, 회전 등)
-    // 누가(currentUserId) 어떤 스티커(decorationId)를 어떻게(item) 바꿀 것인지 명시합니다.
+    // [Update] 장식 수정 (위치, 크기, 회전 등)
     void updateDecoration(Integer decorationId, PostDecorationRequestDTO.DecorationItem updateDTO, Integer currentUserId);
 
     // [Delete] 삭제

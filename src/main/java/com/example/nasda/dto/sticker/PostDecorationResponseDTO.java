@@ -18,6 +18,8 @@ public class PostDecorationResponseDTO {
     // 스티커 정보
     private Integer stickerId;
     private String stickerImageUrl;
+    private String loginId;
+    private String nickname;
 
     // 꾸미기 속성
     private Float posX;
@@ -33,6 +35,8 @@ public class PostDecorationResponseDTO {
                 .postImageId(entity.getPostImage().getImageId())
                 .stickerId(entity.getSticker().getStickerId())
                 .stickerImageUrl(entity.getSticker().getStickerImageUrl())
+                .loginId(entity.getUser().getLoginId())
+                .nickname(entity.getUser().getNickname())
                 .posX(entity.getPosX())
                 .posY(entity.getPosY())
                 .scale(entity.getScale())

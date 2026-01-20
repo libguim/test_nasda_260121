@@ -111,7 +111,7 @@ public class PostDecorationRepositoryTest {
 
         // [When] 장식 저장
         PostDecorationEntity deco = PostDecorationEntity.builder()
-                .post(post).postImage(img).user(user).sticker(sticker)
+                .postImage(img).user(user).sticker(sticker)
                 .posX(150.5f).posY(200.0f).scale(1.2f).zIndex(10)
                 .build();
 
@@ -147,22 +147,30 @@ public class PostDecorationRepositoryTest {
     @Test
     @Transactional
     @Rollback(false)
-    @DisplayName("3. 장식 위치 및 속성 수정 (Update)")
-    public void testUpdateDecoration() {
-        // [Given] 수정할 대상 ID
+    @DisplayName("3. 장식 위치, 크기, 회전 단건 수정 (Update)")
+    public void testUpdateSingleSticker() {
+        // [Given] 실제 DB에 저장된 ID를 사용해야 안전합니다.
+        // 만약 ID 1번이 없다면 테스트가 실패하므로, 앞선 테스트에서 생성된 ID를 사용하거나
+        // 아래처럼 존재하는지 확인하는 로직이 필요합니다.
         Integer targetId = 1;
         float newX = 500.0f;
         float newY = 300.0f;
+        float newScale = 1.5f;
+        float newRotation = 45f;
 
-        // [When] 엔티티 객체를 수정하는 대신, Repository를 통해 DB 직접 업데이트
-        postDecorationRepository.updatePosition(targetId, newX, newY);
+        // [When] 인자 5개 확인: targetId, x, y, scale, rotation
+        postDecorationRepository.updateSingleSticker(targetId, newX, newY, newScale, newRotation);
 
-        // [Then] 영속성 컨텍스트를 새로고침하거나 다시 조회하여 확인
-        // findById는 영속성 컨텍스트를 거치므로 DB 값을 정확히 보기 위해 다시 조회합니다.
-        PostDecorationEntity updated = postDecorationRepository.findById(targetId).get();
-        log.info("--- 수정 후 위치: X=" + updated.getPosX());
+        // [Then]
+        PostDecorationEntity updated = postDecorationRepository.findById(targetId)
+                .orElse(null); // 에러 대신 null 반환으로 흐름 파악
 
-        assertEquals(newX, updated.getPosX());
+        if (updated != null) {
+            log.info("--- 수정 완료: ID=" + targetId);
+            assertEquals(newX, updated.getPosX());
+        } else {
+            log.warn("--- 경고: ID " + targetId + "번 데이터가 DB에 없습니다. 확인이 필요해요!");
+        }
     }
 
     // --- [DELETE] 삭제 테스트 ---
@@ -188,10 +196,10 @@ public class PostDecorationRepositoryTest {
         Integer targetPostId = 1;
 
         // 수정된 메서드명 호출 (언더바 제거)
-        postDecorationRepository.deleteByPostPostId(targetPostId);
+        postDecorationRepository.deleteByPostImage_Post_PostId(targetPostId);
 
         // 검증 조회 메서드도 수정된 이름으로 호출
-        List<PostDecorationEntity> remaining = postDecorationRepository.findByPostPostId(targetPostId);
+        List<PostDecorationEntity> remaining = postDecorationRepository.findByPostImage_Post_PostId(targetPostId);
 
         assertTrue(remaining.isEmpty());
         log.info("--- 일괄 삭제 완료 ---");

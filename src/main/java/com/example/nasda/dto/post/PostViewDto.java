@@ -29,6 +29,8 @@ public class PostViewDto {
     @AllArgsConstructor
     public static class AuthorDto {
         private String nickname;
+        private Integer userId;
+        private String loginId;
     }
 
     @Getter
