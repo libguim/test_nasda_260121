@@ -1,7 +1,3 @@
-/**
- * sticker.js - 지혜의 도서관 권한 로직 (시나리오 A & B 반영)
- * 설계 원칙: 기존 UI 유지, CRUD 기반 함수 배치, 권한 중심 보안
- */
 (function() {
     let categories = [];
     let stickersInPalette = [];
@@ -15,9 +11,6 @@
     // ==========================================
 
     function hasPermission(sticker) {
-        // const currentId = window.ST_DATA?.currentUserId; // "aaaaaa"
-        // const ownerId = window.ST_DATA?.postOwnerId;     // 게시글 주인
-        // const authorId = sticker.authorLoginId;          // 스티커 부착자
         const currentId = String(window.ST_DATA?.currentUserId || '').trim();
         const ownerId = String(window.ST_DATA?.postOwnerId || '').trim();
         const authorId = String(sticker.authorLoginId || '').trim();
@@ -82,7 +75,6 @@
             const cursorClass = isDecorating && canManage ? 'cursor-move' : 'cursor-default';
             el.className = `sticker-item absolute transform -translate-x-1/2 -translate-y-1/2 group ${cursorClass} ${isSelected ? 'z-[10000]' : 'z-10'}`;
 
-            // el.className = `sticker-item absolute transform -translate-x-1/2 -translate-y-1/2 group ${canManage ? 'cursor-move' : 'cursor-default'} ${isSelected ? 'z-[10000]' : 'z-10'}`;
             el.style.width = absoluteSize + 'px';
             el.style.height = absoluteSize + 'px';
             el.style.left = s.x + '%';
@@ -179,10 +171,6 @@
 
                 const rect = targetLayer.getBoundingClientRect();
                 const onMouseMove = (mE) => {
-                    // s.x = Math.max(0, Math.min(100, ((mE.clientX - rect.left) / rect.width) * 100));
-                    // s.y = Math.max(0, Math.min(100, ((mE.clientY - rect.top) / rect.height) * 100));
-                    // el.style.left = s.x + '%';
-                    // el.style.top = s.y + '%';
                     const newX = Math.max(0, Math.min(100, ((mE.clientX - rect.left) / rect.width) * 100));
                     const newY = Math.max(0, Math.min(100, ((mE.clientY - rect.top) / rect.height) * 100));
 
@@ -210,10 +198,6 @@
                         console.log(`📍 스티커(${s.dbId || '신규'})가 이동되었습니다. (Dirty: true)`);
                     }
 
-                    // 💡 드래그가 끝나면 서버에 위치 저장 (선택 사항)
-                    // if (s.dbId) {
-                    //     await updateAction('move', 0);
-                    // }
                 };
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
@@ -240,7 +224,7 @@
         }
         // 💡 변경됨을 표시
         selectedSticker.isDirty = true;
-        renderStickers();
+        await renderStickers();
 
         if (selectedSticker.dbId) {
             try {
@@ -279,8 +263,6 @@
                     stickers = [];
                     selectedSticker = null;
                     await renderStickers(); // 화면 즉시 비움
-                    // await window.saveDecoration();
-                    // alert("모두 삭제되었습니다. ✨");
                     console.log("⚠️ 안내: 화면에서 모든 스티커가 제거되었습니다. [저장하기]를 눌러야 DB에 반영됩니다.");
                 } catch (err) { alert("삭제 중 오류 발생"); }
             }
@@ -340,25 +322,6 @@
             const imageId = Number(layer.getAttribute('data-image-id'));
 
             let stickersToSave;
-
-            // const ownerId = String(window.ST_DATA?.postOwnerId || '').trim();
-            // const currentId = String(window.ST_DATA?.currentUserId || '').trim();
-            // const hasDeletedOrAdded = stickers.some(s => !s.dbId) ||
-            //     // 처음 불러온 개수와 현재 개수가 다르면 변경된 것
-            //     (window.INITIAL_STICKER_COUNT !== stickers.length);
-
-
-
-            // if (!hasDeletedOrAdded && !hasModified) {
-            //     console.log("🍃 변경된 사항이 없어 저장을 건너뜁니다.");
-            //     alert("변경 사항이 없습니다.");
-            //
-            //     // UI 정리만 하고 종료
-            //     closeDecoPanel();
-            //     return;
-            // }
-
-
 
             if (currentId === ownerId) {
                 // 시나리오 A: 내가 주인인 경우 -> 이 이미지에 붙은 '모든' 스티커를 보냅니다.
@@ -525,7 +488,7 @@
     });
 
     // 팔레트 및 카테고리 로직 (기존 유지)
-    window.startDecoration = function() {
+    window.startDecoration = async function() {
         isDecorating = true;
 
         stickerBackup = JSON.parse(JSON.stringify(stickers));
@@ -534,7 +497,7 @@
         document.querySelectorAll('.sticker-layer').forEach(l => l.style.pointerEvents = 'auto');
         document.getElementById('deco-active-view')?.classList.remove('hidden');
         document.getElementById('deco-start-view')?.classList.add('hidden');
-        fetchStickerCategories();
+        await fetchStickerCategories();
     };
 
     // 꾸미기를 취소하고 원래 상태로 되돌리는 함수

@@ -19,10 +19,6 @@ public class PostDecorationEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer decorationId;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "post_id", nullable = false)
-//    private PostEntity post;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "image_id", nullable = false)
     private PostImageEntity postImage;

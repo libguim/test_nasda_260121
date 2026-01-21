@@ -39,7 +39,7 @@ public class PostDecorationServiceImpl implements PostDecorationService {
 
         log.info("🚀 [SAVE START] 유저: {}, 이미지: {}", currentUserId, imageId);
 
-        // 1. 기초 정보 로드
+        // 기초 정보 로드
         PostImageEntity postImage = postImageRepository.findById(imageId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 이미지입니다."));
         UserEntity decorator = entityManager.getReference(UserEntity.class, currentUserId);
@@ -58,25 +58,7 @@ public class PostDecorationServiceImpl implements PostDecorationService {
         PostImageEntity freshPostImage = postImageRepository.findById(imageId).orElseThrow();
         UserEntity freshDecorator = entityManager.getReference(UserEntity.class, currentUserId);
 
-        // 💡 [STEP 1] 선별적 삭제:
-        // 현재 이미지에 붙은 '내 스티커'들 중, 이번 요청 목록에 ID가 없는 것만 골라 지웁니다.
-//        List<PostDecorationEntity> existingMyDecorations = postDecorationRepository.findByPostImage_ImageId(imageId)
-//                .stream()
-//                .filter(d -> d.getUser().getUserId().equals(currentUserId))
-//                .collect(Collectors.toList());
-//
-//        List<Integer> incomingIds = requestDTO.getDecorations().stream()
-//                .map(item -> item.getDecorationId())
-//                .filter(id -> id != null)
-//                .collect(Collectors.toList());
-//
-//        existingMyDecorations.stream()
-//                .filter(d -> !incomingIds.contains(d.getDecorationId()))
-//                .forEach(postDecorationRepository::delete);
-//
-//        log.info("🗑️ [DELETE STEP] {} 권한으로 삭제 처리 완료", isPostOwner ? "게시글 주인" : "일반 유저");
-
-        // 💡 [STEP 2] 스티커 정보 조회 (기존 유지)
+        // 스티커 정보 조회 (기존 유지)
         List<Integer> stickerIds = requestDTO.getDecorations().stream()
                 .map(PostDecorationRequestDTO.DecorationItem::getStickerId)
                 .distinct()
@@ -85,7 +67,7 @@ public class PostDecorationServiceImpl implements PostDecorationService {
         Map<Integer, StickerEntity> stickerMap = stickerRepository.findAllById(stickerIds).stream()
                 .collect(Collectors.toMap(StickerEntity::getStickerId, s -> s));
 
-        // 💡 [STEP 3] 수정 또는 삽입 처리
+        // 수정 또는 삽입 처리
         List<PostDecorationEntity> entitiesToSave = requestDTO.getDecorations().stream()
                 .map(item -> {
                     StickerEntity sticker = stickerMap.get(item.getStickerId());
@@ -99,21 +81,6 @@ public class PostDecorationServiceImpl implements PostDecorationService {
                             .rotation(item.getRotation())
                             .zIndex(10)
                             .build();
-//                    if (item.getDecorationId() != null) {
-//                        // 기존 데이터: Dirty Checking으로 변경사항만 업데이트
-//                        PostDecorationEntity existing = postDecorationRepository.findById(item.getDecorationId())
-//                                .orElseThrow(() -> new IllegalArgumentException("수정할 스티커가 존재하지 않습니다."));
-//                        existing.changePosition(item.getPosX(), item.getPosY(), item.getScale(), item.getRotation());
-//                        return existing;
-//                    } else {
-//                        // 신규 데이터: 새 엔티티 생성
-//                        StickerEntity sticker = stickerMap.get(item.getStickerId());
-//                        return PostDecorationEntity.builder()
-//                                .postImage(postImage).user(decorator).sticker(sticker)
-//                                .posX(item.getPosX()).posY(item.getPosY())
-//                                .scale(item.getScale()).rotation(item.getRotation())
-//                                .zIndex(10).build();
-//                    }
                 })
                 .collect(Collectors.toList());
 
