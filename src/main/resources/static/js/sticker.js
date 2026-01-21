@@ -83,9 +83,7 @@
             el.setAttribute('title', `✨ ${authorDisplayName}님이 붙였어요`);
 
             // 기존 레이아웃 구조 절대 유지
-            let innerContent = `
-            <img src="${s.imgUrl}" class="sticker-main-img" style="width:100%; height:100%; display:block; pointer-events:none; object-fit:contain; ${isSelected && canManage ? 'filter: drop-shadow(0 0 10px #fbcfe8); border: 2.5px dashed #fbcfe8; border-radius: 12px;' : ''}">
-            `;
+            let innerContent = `<img src="${s.imgUrl}" class="sticker-main-img" style="width:100%; height:100%; display:block; pointer-events:none; object-fit:contain; ${isSelected && canManage ? 'filter: drop-shadow(0 0 10px #fbcfe8); border: 2.5px dashed #fbcfe8; border-radius: 12px;' : ''}">`;
 
             // 권한이 있는 경우에만 삭제 버튼과 조작 패널 렌더링
             if (canManage) {
