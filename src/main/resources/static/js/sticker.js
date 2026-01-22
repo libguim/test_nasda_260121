@@ -1,4 +1,5 @@
 (function() {
+
     let categories = [];
     let stickersInPalette = [];
     let stickers = []; // 현재 화면의 스티커 상태 (메모리)
@@ -7,7 +8,7 @@
     let selectedSticker = null;
 
     // ==========================================
-    // 1. [AUTHORIZATION] 권한 및 유틸리티
+    //  [AUTHORIZATION] 권한 및 유틸리티
     // ==========================================
 
     function hasPermission(sticker) {
@@ -49,8 +50,238 @@
         throw new Error("🔒 이 스티커를 삭제할 권한이 없습니다.");
     }
 
+    async function fetchStickerCategories() {
+        try {
+            const response = await axios.get('/api/sticker-categories');
+            categories = response.data;
+            renderCategoryTabs();
+            if (categories.length > 0) fetchStickersByCategory(categories[0].stickerCategoryId);
+        } catch (err) { console.error("카테고리 로드 실패"); }
+    }
+
+    async function fetchStickersByCategory(categoryId) {
+        try {
+            const response = await axios.get(`/api/stickers/categories/${categoryId}`);
+            stickersInPalette = response.data;
+            renderPalette();
+        } catch (err) { console.error("스티커 로드 실패"); }
+    }
+
+    // 팔레트 및 카테고리 로직 (기존 유지)
+    window.startDecoration = async function() {
+        isDecorating = true;
+
+        stickerBackup = JSON.parse(JSON.stringify(stickers));
+        console.log("💾 취소에 대비해 현재 스티커 상태를 백업했습니다.");
+
+        document.querySelectorAll('.sticker-layer').forEach(l => l.style.pointerEvents = 'auto');
+        document.getElementById('deco-active-view')?.classList.remove('hidden');
+        document.getElementById('deco-start-view')?.classList.add('hidden');
+        await fetchStickerCategories();
+    };
+
+    // 꾸미기를 취소하고 원래 상태로 되돌리는 함수
+    window.cancelDecoration = async function() {
+        if (confirm("변경 사항을 저장하지 않고 취소하시겠습니까?")) {
+
+            stickers = JSON.parse(JSON.stringify(stickerBackup));
+
+            // 1. 선택 해제 및 화면 다시 그리기 (저장 전 상태로 복구)
+
+            selectedSticker = null;
+            isDecorating = false;
+
+            console.log("🔄 모든 변경사항을 취소하고 원본으로 복구했습니다.");
+
+            await renderStickers();
+
+            // 2. UI 닫기
+            document.querySelectorAll('.sticker-layer').forEach(l => l.style.pointerEvents = 'none');
+            document.getElementById('deco-active-view')?.classList.add('hidden');
+            document.getElementById('deco-start-view')?.classList.remove('hidden');
+
+            if (window.mySwiper) window.mySwiper.allowTouchMove = true;
+            console.log("🎨 스티커 붙이기가 취소되었습니다.");
+        }
+    };
+
     // ==========================================
-    // 2. [READ & RENDER] 데이터 조회 및 화면 렌더링
+    //  [DELETE] 일괄 삭제 (시나리오 A & B)
+    // ==========================================
+
+    window.clearAllStickers = async function() {
+        const currentId = String(window.ST_DATA?.currentUserId || '').trim();
+        const ownerId = String(window.ST_DATA?.postOwnerId || '').trim();
+
+        if (!currentId || currentId === 'anonymous') {
+            alert("🔒 로그인이 필요합니다.");
+            return;
+        }
+
+        // 시나리오 A: 내가 주인인 게시글 -> 전체 삭제
+        if (currentId === ownerId) {
+            if (confirm('모든 스티커를 지우시겠습니까?')) {
+                try {
+                    // 💡 핀셋 3: 서버의 모든 스티커 삭제 API가 있다면 호출, 없다면 개별 삭제 반복
+                    // 현재 백엔드 로직에 맞춰 stickers 배열의 모든 dbId를 처리하거나
+                    // 특정 이미지의 전체 삭제 API를 호출해야 합니다.
+                    stickers = [];
+                    selectedSticker = null;
+                    await renderStickers(); // 화면 즉시 비움
+                    console.log("⚠️ 안내: 화면에서 모든 스티커가 제거되었습니다. [저장하기]를 눌러야 DB에 반영됩니다.");
+                } catch (err) { alert("삭제 중 오류 발생"); }
+            }
+        }
+        // 시나리오 B: 남의 게시글 -> 본인 것만 삭제
+        else {
+            if (confirm('본인의 스티커만 지우시겠습니까?')) {
+                stickers = stickers.filter(s => String(s.authorLoginId).trim() !== currentId);
+                selectedSticker = null;
+                await renderStickers(); // 💡 화면 갱신
+
+                console.log("⚠️ 안내: 본인의 스티커가 화면에서 제거되었습니다. [저장하기]를 눌러야 DB에 반영됩니다.");
+            }
+        }
+    };
+
+    // ==========================================
+    //  [SAVE] 최종 저장 (내가 작성한 것만 업데이트)
+    // ==========================================
+
+    window.saveDecoration = async function() {
+        const currentUserId = window.ST_DATA?.currentUserId;
+        const rawUserId = window.ST_DATA?.rawUserId;
+        const postId = window.ST_DATA?.postId;
+
+        if (!currentUserId || currentUserId === 'anonymous') {
+            alert("🔒 로그인 후 저장할 수 있습니다.");
+            return;
+        }
+
+        const hasDeletedOrAdded = stickers.some(s => !s.dbId) ||
+            (window.INITIAL_STICKER_COUNT !== stickers.length);
+        const hasModified = stickers.some(s => s.isDirty === true);
+
+        if (!hasDeletedOrAdded && !hasModified) {
+            alert("변경 사항이 없습니다.");
+
+            // UI 즉시 정리 및 종료
+            isDecorating = false;
+            selectedSticker = null;
+            document.querySelectorAll('.sticker-layer').forEach(l => l.style.pointerEvents = 'none');
+            document.getElementById('deco-active-view')?.classList.add('hidden');
+            document.getElementById('deco-start-view')?.classList.remove('hidden');
+            if (window.mySwiper) window.mySwiper.allowTouchMove = true;
+
+            console.log("🍃 변경 사항이 없어 패널을 닫습니다.");
+            return;
+        }
+
+        // 1. 화면의 모든 이미지 레이어를 찾음
+        const allImageLayers = Array.from(document.querySelectorAll('.sticker-layer'));
+        const ownerId = String(window.ST_DATA?.postOwnerId || '').trim();
+        const currentId = String(window.ST_DATA?.currentUserId || '').trim();
+
+        // 2. 각 레이어(이미지)별로 저장 요청 생성
+        const savePromises = allImageLayers.map(layer => {
+            const imageId = Number(layer.getAttribute('data-image-id'));
+
+            let stickersToSave;
+
+            if (currentId === ownerId) {
+                // 시나리오 A: 내가 주인인 경우 -> 이 이미지에 붙은 '모든' 스티커를 보냅니다.
+                // (모두 지우기를 했다면 stickers가 빈 배열이므로, 서버에 빈 배열이 전달되어 DB가 비워집니다.)
+                stickersToSave = stickers.filter(s => s.postImageId === imageId);
+            } else {
+                // 시나리오 B: 내가 방문자인 경우 -> 오직 '내'가 붙인 스티커만 보냅니다.
+                stickersToSave = stickers.filter(s =>
+                    s.postImageId === imageId && s.authorLoginId === currentId
+                );
+            }
+
+            console.log(`📡 이미지(${imageId}) 저장 대상 수: ${stickersToSave.length}개`);
+
+            // 해당 이미지에 내가 붙인 스티커가 하나도 없더라도
+            // 서버에서 '전체 삭제 후 갱신' 처리를 한다면 빈 배열을 보내야 할 수도 있습니다.
+            // 여기서는 안전하게 내가 관리하는 스티커들만 보냅니다.
+            return axios.post('/api/decorations', {
+                postImageId: imageId,
+                userId: rawUserId,
+                decorations: stickersToSave.map(s => ({
+                    // 기존 스티커라면 dbId(decorationId)가 있고, 새로 만든 거라면 없습니다.
+                    decorationId: s.dbId || null,
+                    stickerId: s.stickerId,
+                    posX: parseFloat((Number(s.x ?? s.originX) || 0).toFixed(2)),
+                    posY: parseFloat((Number(s.y ?? s.originY) || 0).toFixed(2)),
+                    scale: parseFloat((Number(s.scale) || 1.0).toFixed(2)),
+                    rotation: s.rotation || 0,
+                    zIndex: 10
+                }))
+            });
+        });
+
+        // 3. 모든 레이어의 저장 요청이 완료될 때까지 대기
+        // [SAVE] 최종 저장 로직 수정
+        try {
+            console.log("⏳ 1. 저장 요청 시작...");
+            await Promise.all(savePromises);
+            console.log("✅ 2. 모든 이미지 저장 완료");
+
+            const response = await axios.get(`/api/decorations/post/${postId}`);
+            const allUpdatedStickers = response.data;
+
+            // 디버깅 콘솔 생성
+            console.group("📊 데이터 동기화 디버깅");
+            console.log("- 서버 전체 응답 데이터:", allUpdatedStickers);
+            console.log("- 데이터 타입:", Array.isArray(allUpdatedStickers) ? "Array" : typeof allUpdatedStickers);
+            console.log("- 데이터 개수:", allUpdatedStickers?.length);
+            console.groupEnd();
+
+            if (!allUpdatedStickers) {
+                throw new Error("서버에서 받은 스티커 데이터가 비어 있습니다.");
+            }
+
+            // 💡 [개선] 데이터가 있든 없든 항상 stickers 배열을 서버 데이터로 동기화합니다.
+            stickers = allUpdatedStickers.map(item => ({
+                dbId: item.decorationId,
+                postImageId: item.postImageId,
+                stickerId: item.stickerId,
+                imgUrl: item.stickerImageUrl,
+                x: item.posX,
+                y: item.posY,
+                originX: item.posX,
+                originY: item.posY,
+                scale: item.scale || 1.0,
+                rotation: item.rotation || 0,
+                authorLoginId: String(item.loginId || '').trim(),
+                authorNickname: item.nickname || "사용자"
+            }));
+
+            window.INITIAL_STICKER_COUNT = stickers.length;
+            alert("스티커 설정이 저장되었습니다! ✨");
+
+            selectedSticker = null;
+            await renderStickers();
+
+            isDecorating = false; // 꾸미기 모드 종료
+
+            // 스티커 레이어의 클릭/드래그 막기
+            document.querySelectorAll('.sticker-layer').forEach(l => l.style.pointerEvents = 'auto');
+
+            // 패널 숨기고 시작 버튼 보여주기
+            document.getElementById('deco-active-view')?.classList.add('hidden'); // 팔레트 닫기
+            document.getElementById('deco-start-view')?.classList.remove('hidden'); // 시작 버튼 보이기
+            if (window.mySwiper) window.mySwiper.allowTouchMove = true;
+
+        } catch (err) {
+            console.error("저장 실패 상세 로직:", err);
+            const errorMsg = err.response?.data?.message || err.message;
+            alert("저장 중 오류가 발생했습니다: " + errorMsg);
+        }
+    };
+
+    // ==========================================
+    //  [READ & RENDER] 데이터 조회 및 화면 렌더링
     // ==========================================
 
     async function renderStickers() {
@@ -205,8 +436,42 @@
         }
     }
 
+    function renderCategoryTabs() {
+        const tabContainer = document.getElementById('sticker-category-tabs');
+        if (!tabContainer) return;
+        tabContainer.innerHTML = '';
+        categories.forEach((cat, idx) => {
+            const tab = document.createElement('button');
+            tab.className = `category-btn ${idx === 0 ? 'active' : ''}`;
+            tab.textContent = cat.name;
+            tab.onclick = () => {
+                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                tab.classList.add('active');
+                fetchStickersByCategory(cat.stickerCategoryId);
+            };
+            tabContainer.appendChild(tab);
+        });
+    }
+
+    function renderPalette() {
+        const palette = document.getElementById('sticker-palette');
+        if (!palette) return;
+        palette.innerHTML = '';
+        stickersInPalette.forEach((sticker) => {
+            const div = document.createElement('div');
+            div.className = 'palette-item cursor-grab p-2 hover:bg-pink-50 rounded-xl flex items-center justify-center bg-transparent';
+            div.innerHTML = `<img src="${sticker.stickerImageUrl}" onerror="this.remove()" class="w-12 h-12 object-contain pointer-events-none bg-transparent">`;
+            div.draggable = true;
+            div.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('imgUrl', sticker.stickerImageUrl);
+                e.dataTransfer.setData('stickerId', sticker.stickerId);
+            });
+            palette.appendChild(div);
+        });
+    }
+
     // ==========================================
-    // 3. [CREATE & UPDATE] 추가 및 조작 이벤트
+    //  [CREATE & UPDATE] 추가 및 조작 이벤트
     // ==========================================
 
     async function updateAction(type, val) {
@@ -239,182 +504,7 @@
     }
 
     // ==========================================
-    // 4. [DELETE] 일괄 삭제 (시나리오 A & B)
-    // ==========================================
-
-    window.clearAllStickers = async function() {
-        const currentId = String(window.ST_DATA?.currentUserId || '').trim();
-        const ownerId = String(window.ST_DATA?.postOwnerId || '').trim();
-
-        if (!currentId || currentId === 'anonymous') {
-            alert("🔒 로그인이 필요합니다.");
-            return;
-        }
-
-        // 시나리오 A: 내가 주인인 게시글 -> 전체 삭제
-        if (currentId === ownerId) {
-            if (confirm('모든 스티커를 지우시겠습니까?')) {
-                try {
-                    // 💡 핀셋 3: 서버의 모든 스티커 삭제 API가 있다면 호출, 없다면 개별 삭제 반복
-                    // 현재 백엔드 로직에 맞춰 stickers 배열의 모든 dbId를 처리하거나
-                    // 특정 이미지의 전체 삭제 API를 호출해야 합니다.
-                    stickers = [];
-                    selectedSticker = null;
-                    await renderStickers(); // 화면 즉시 비움
-                    console.log("⚠️ 안내: 화면에서 모든 스티커가 제거되었습니다. [저장하기]를 눌러야 DB에 반영됩니다.");
-                } catch (err) { alert("삭제 중 오류 발생"); }
-            }
-        }
-        // 시나리오 B: 남의 게시글 -> 본인 것만 삭제
-        else {
-            if (confirm('본인의 스티커만 지우시겠습니까?')) {
-                stickers = stickers.filter(s => String(s.authorLoginId).trim() !== currentId);
-                selectedSticker = null;
-                await renderStickers(); // 💡 화면 갱신
-
-                console.log("⚠️ 안내: 본인의 스티커가 화면에서 제거되었습니다. [저장하기]를 눌러야 DB에 반영됩니다.");
-            }
-        }
-    };
-
-// ==========================================
-// 5. [SAVE] 최종 저장 (내가 작성한 것만 업데이트)
-// ==========================================
-
-    window.saveDecoration = async function() {
-        const currentUserId = window.ST_DATA?.currentUserId;
-        const rawUserId = window.ST_DATA?.rawUserId;
-        const postId = window.ST_DATA?.postId;
-
-        if (!currentUserId || currentUserId === 'anonymous') {
-            alert("🔒 로그인 후 저장할 수 있습니다.");
-            return;
-        }
-
-        const hasDeletedOrAdded = stickers.some(s => !s.dbId) ||
-            (window.INITIAL_STICKER_COUNT !== stickers.length);
-        const hasModified = stickers.some(s => s.isDirty === true);
-
-        if (!hasDeletedOrAdded && !hasModified) {
-            alert("변경 사항이 없습니다.");
-
-            // UI 즉시 정리 및 종료
-            isDecorating = false;
-            selectedSticker = null;
-            document.querySelectorAll('.sticker-layer').forEach(l => l.style.pointerEvents = 'none');
-            document.getElementById('deco-active-view')?.classList.add('hidden');
-            document.getElementById('deco-start-view')?.classList.remove('hidden');
-            if (window.mySwiper) window.mySwiper.allowTouchMove = true;
-
-            console.log("🍃 변경 사항이 없어 패널을 닫습니다.");
-            return;
-        }
-
-        // 1. 화면의 모든 이미지 레이어를 찾음
-        const allImageLayers = Array.from(document.querySelectorAll('.sticker-layer'));
-        const ownerId = String(window.ST_DATA?.postOwnerId || '').trim();
-        const currentId = String(window.ST_DATA?.currentUserId || '').trim();
-
-        // 2. 각 레이어(이미지)별로 저장 요청 생성
-        const savePromises = allImageLayers.map(layer => {
-            const imageId = Number(layer.getAttribute('data-image-id'));
-
-            let stickersToSave;
-
-            if (currentId === ownerId) {
-                // 시나리오 A: 내가 주인인 경우 -> 이 이미지에 붙은 '모든' 스티커를 보냅니다.
-                // (모두 지우기를 했다면 stickers가 빈 배열이므로, 서버에 빈 배열이 전달되어 DB가 비워집니다.)
-                stickersToSave = stickers.filter(s => s.postImageId === imageId);
-            } else {
-                // 시나리오 B: 내가 방문자인 경우 -> 오직 '내'가 붙인 스티커만 보냅니다.
-                stickersToSave = stickers.filter(s =>
-                    s.postImageId === imageId && s.authorLoginId === currentId
-                );
-            }
-
-            console.log(`📡 이미지(${imageId}) 저장 대상 수: ${stickersToSave.length}개`);
-
-            // 해당 이미지에 내가 붙인 스티커가 하나도 없더라도
-            // 서버에서 '전체 삭제 후 갱신' 처리를 한다면 빈 배열을 보내야 할 수도 있습니다.
-            // 여기서는 안전하게 내가 관리하는 스티커들만 보냅니다.
-            return axios.post('/api/decorations', {
-                postImageId: imageId,
-                userId: rawUserId,
-                decorations: stickersToSave.map(s => ({
-                    // 기존 스티커라면 dbId(decorationId)가 있고, 새로 만든 거라면 없습니다.
-                    decorationId: s.dbId || null,
-                    stickerId: s.stickerId,
-                    posX: parseFloat((Number(s.x ?? s.originX) || 0).toFixed(2)),
-                    posY: parseFloat((Number(s.y ?? s.originY) || 0).toFixed(2)),
-                    scale: parseFloat((Number(s.scale) || 1.0).toFixed(2)),
-                    rotation: s.rotation || 0,
-                    zIndex: 10
-                }))
-            });
-        });
-
-        // 3. 모든 레이어의 저장 요청이 완료될 때까지 대기
-        // [SAVE] 최종 저장 로직 수정
-        try {
-            console.log("⏳ 1. 저장 요청 시작...");
-            await Promise.all(savePromises);
-            console.log("✅ 2. 모든 이미지 저장 완료");
-
-            const response = await axios.get(`/api/decorations/post/${postId}`);
-            const allUpdatedStickers = response.data;
-
-            // 디버깅 콘솔 생성
-            console.group("📊 데이터 동기화 디버깅");
-            console.log("- 서버 전체 응답 데이터:", allUpdatedStickers);
-            console.log("- 데이터 타입:", Array.isArray(allUpdatedStickers) ? "Array" : typeof allUpdatedStickers);
-            console.log("- 데이터 개수:", allUpdatedStickers?.length);
-            console.groupEnd();
-
-            if (!allUpdatedStickers) {
-                throw new Error("서버에서 받은 스티커 데이터가 비어 있습니다.");
-            }
-
-            // 💡 [개선] 데이터가 있든 없든 항상 stickers 배열을 서버 데이터로 동기화합니다.
-            stickers = allUpdatedStickers.map(item => ({
-                dbId: item.decorationId,
-                postImageId: item.postImageId,
-                stickerId: item.stickerId,
-                imgUrl: item.stickerImageUrl,
-                x: item.posX,
-                y: item.posY,
-                originX: item.posX,
-                originY: item.posY,
-                scale: item.scale || 1.0,
-                rotation: item.rotation || 0,
-                authorLoginId: String(item.loginId || '').trim(),
-                authorNickname: item.nickname || "사용자"
-            }));
-
-            window.INITIAL_STICKER_COUNT = stickers.length;
-            alert("스티커 설정이 저장되었습니다! ✨");
-
-            selectedSticker = null;
-            await renderStickers();
-
-            isDecorating = false; // 꾸미기 모드 종료
-
-            // 스티커 레이어의 클릭/드래그 막기
-            document.querySelectorAll('.sticker-layer').forEach(l => l.style.pointerEvents = 'auto');
-
-            // 패널 숨기고 시작 버튼 보여주기
-            document.getElementById('deco-active-view')?.classList.add('hidden'); // 팔레트 닫기
-            document.getElementById('deco-start-view')?.classList.remove('hidden'); // 시작 버튼 보이기
-            if (window.mySwiper) window.mySwiper.allowTouchMove = true;
-
-        } catch (err) {
-            console.error("저장 실패 상세 로직:", err);
-            const errorMsg = err.response?.data?.message || err.message;
-            alert("저장 중 오류가 발생했습니다: " + errorMsg);
-        }
-    };
-
-    // ==========================================
-    // 6. [INIT] 초기화 및 팔레트 로직
+    //  [INIT] 초기화 및 팔레트 로직
     // ==========================================
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -485,92 +575,5 @@
 
     });
 
-    // 팔레트 및 카테고리 로직 (기존 유지)
-    window.startDecoration = async function() {
-        isDecorating = true;
 
-        stickerBackup = JSON.parse(JSON.stringify(stickers));
-        console.log("💾 취소에 대비해 현재 스티커 상태를 백업했습니다.");
-
-        document.querySelectorAll('.sticker-layer').forEach(l => l.style.pointerEvents = 'auto');
-        document.getElementById('deco-active-view')?.classList.remove('hidden');
-        document.getElementById('deco-start-view')?.classList.add('hidden');
-        await fetchStickerCategories();
-    };
-
-    // 꾸미기를 취소하고 원래 상태로 되돌리는 함수
-    window.cancelDecoration = async function() {
-        if (confirm("변경 사항을 저장하지 않고 취소하시겠습니까?")) {
-
-            stickers = JSON.parse(JSON.stringify(stickerBackup));
-
-            // 1. 선택 해제 및 화면 다시 그리기 (저장 전 상태로 복구)
-
-            selectedSticker = null;
-            isDecorating = false;
-
-            console.log("🔄 모든 변경사항을 취소하고 원본으로 복구했습니다.");
-
-            await renderStickers();
-
-            // 2. UI 닫기
-            document.querySelectorAll('.sticker-layer').forEach(l => l.style.pointerEvents = 'none');
-            document.getElementById('deco-active-view')?.classList.add('hidden');
-            document.getElementById('deco-start-view')?.classList.remove('hidden');
-
-            if (window.mySwiper) window.mySwiper.allowTouchMove = true;
-            console.log("🎨 스티커 붙이기가 취소되었습니다.");
-        }
-    };
-
-    async function fetchStickerCategories() {
-        try {
-            const response = await axios.get('/api/sticker-categories');
-            categories = response.data;
-            renderCategoryTabs();
-            if (categories.length > 0) fetchStickersByCategory(categories[0].stickerCategoryId);
-        } catch (err) { console.error("카테고리 로드 실패"); }
-    }
-
-    async function fetchStickersByCategory(categoryId) {
-        try {
-            const response = await axios.get(`/api/stickers/categories/${categoryId}`);
-            stickersInPalette = response.data;
-            renderPalette();
-        } catch (err) { console.error("스티커 로드 실패"); }
-    }
-
-    function renderCategoryTabs() {
-        const tabContainer = document.getElementById('sticker-category-tabs');
-        if (!tabContainer) return;
-        tabContainer.innerHTML = '';
-        categories.forEach((cat, idx) => {
-            const tab = document.createElement('button');
-            tab.className = `category-btn ${idx === 0 ? 'active' : ''}`;
-            tab.textContent = cat.name;
-            tab.onclick = () => {
-                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
-                tab.classList.add('active');
-                fetchStickersByCategory(cat.stickerCategoryId);
-            };
-            tabContainer.appendChild(tab);
-        });
-    }
-
-    function renderPalette() {
-        const palette = document.getElementById('sticker-palette');
-        if (!palette) return;
-        palette.innerHTML = '';
-        stickersInPalette.forEach((sticker) => {
-            const div = document.createElement('div');
-            div.className = 'palette-item cursor-grab p-2 hover:bg-pink-50 rounded-xl flex items-center justify-center bg-transparent';
-            div.innerHTML = `<img src="${sticker.stickerImageUrl}" onerror="this.remove()" class="w-12 h-12 object-contain pointer-events-none bg-transparent">`;
-            div.draggable = true;
-            div.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('imgUrl', sticker.stickerImageUrl);
-                e.dataTransfer.setData('stickerId', sticker.stickerId);
-            });
-            palette.appendChild(div);
-        });
-    }
 })();
